@@ -1,4 +1,4 @@
-name: Push Container to Heroku
+name: Push Container to Heroku on production
 
 on:
   push:
@@ -7,10 +7,16 @@ on:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [8.x, 10.x, 12.x]
+
     steps:
-      - uses: actions/checkout@v1
-      - name: Login to Heroku Container registry
+      - uses: actions/checkout@v2
+      - name : Login to Heroku Container registry
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         run: heroku container:login
@@ -22,3 +28,18 @@ jobs:
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         run: heroku container:release -a ${{ secrets.HEROKU_APP_NAME_PROD }} web
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: npm install
+        run: |
+          npm install
+          npm run build --if-present
+          npm test
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          CI: true

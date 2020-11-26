@@ -1,4 +1,4 @@
-name: Push Container to Heroku
+name: Push Heroku Container on staging
 
 on:
   push:
@@ -7,18 +7,39 @@ on:
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [10.x]
+
     steps:
-      - uses: actions/checkout@v1
-      - name: Login to Heroku Container registry
+      - uses: actions/checkout@v2
+      - name : Login to Heroku Container registry
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         run: heroku container:login
       - name: Build and push
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-        run: heroku container:push -a ${{ secrets.HEROKU_APP_NAME_STAGING }} web
+        run: heroku container:push -a ${{ secrets.HEROKU_APP_STAGING_NAME_STAGING }} web
       - name: Release
         env:
           HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-        run: heroku container:release -a ${{ secrets.HEROKU_APP_NAME_STAGING }} web
+        run: heroku container:release -a ${{ secrets.HEROKU_APP_STAGING_NAME_STAGING }} web
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: npm install
+        run: |
+          npm install
+          npm run build --if-present
+          npm test
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          CI: true
