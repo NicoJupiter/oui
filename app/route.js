@@ -1,5 +1,6 @@
 const formValidator = require('./form_validator');
 const photoModel = require('./photo_model');
+const { PubSub } = require('@google-cloud/pubsub');
 
 function route(app) {
   app.get('/', (req, res) => {
@@ -27,15 +28,32 @@ function route(app) {
 
     // get photos from flickr public feed api
     return photoModel
-      .getFlickrPhotos(tags, tagmode)
-      .then(photos => {
-        ejsLocalVariables.photos = photos;
-        ejsLocalVariables.searchResults = true;
-        return res.render('index', ejsLocalVariables);
-      })
-      .catch(error => {
-        return res.status(500).send({ error });
-      });
+        .getFlickrPhotos(tags, tagmode)
+        .then(photos => {
+          console.log(photos);
+          ejsLocalVariables.photos = photos;
+          ejsLocalVariables.searchResults = true;
+          return res.render('index', ejsLocalVariables);
+        })
+        .catch(error => {
+          return res.status(500).send({ error });
+        });
+  });
+
+  app.get('/zip', async (req, res) => {
+    const tags = req.query.tags;
+    const tagmode = req.query.tagmode;
+
+    const env = require('../project-id-9307823999230114798-b3157dde6a00');
+
+    const credentials = {
+      projectId: env.project_id,
+      credentials: env
+    };
+    const pubsub = new PubSub(credentials);
+    const topic = pubsub.topic('nicolas');
+    topic.publish(Buffer.from(JSON.stringify({ tags, tagmode })));
+    res.status(200)
   });
 }
 
